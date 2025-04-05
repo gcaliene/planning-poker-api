@@ -13,7 +13,7 @@ class RoomService {
   }
 
   getRoom(roomId) {
-    return this.rooms.get(roomId);
+    return this.rooms.get(roomId) || null;
   }
 
   deleteRoom(roomId) {
@@ -33,6 +33,7 @@ class RoomService {
     const shouldDelete = room.removeParticipant(userId);
     if (shouldDelete) {
       this.deleteRoom(roomId);
+      return null;
     }
     return room;
   }
