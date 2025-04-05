@@ -1,65 +1,90 @@
 const roomService = require('./roomService');
 
-function setupSocketHandlers(io) {
-  io.on('connection', (socket) => {
-    console.log('User connected:', socket.id);
+function handleConnection(socket, io) {
+  console.log('User connected:', socket.id);
 
-    socket.on('join-room', ({ roomId, user }) => {
-      const room = roomService.addParticipant(roomId, user);
+  socket.on('join-room', async ({ roomId, user }) => {
+    try {
+      const room = await roomService.addParticipant(roomId, user);
       if (!room) {
         socket.emit('error', { message: 'Room not found' });
         return;
       }
 
       socket.join(roomId);
-      io.to(roomId).emit('room-update', room);
       console.log(`${user.name} joined room ${roomId}`);
-    });
+      io.to(roomId).emit('room-update', room);
+    } catch (error) {
+      console.error('Error joining room:', error);
+      socket.emit('error', { message: 'Error joining room' });
+    }
+  });
 
-    socket.on('submit-vote', ({ roomId, userId, vote }) => {
-      const room = roomService.submitVote(roomId, userId, vote);
-      if (!room) {
-        socket.emit('error', { message: 'Room not found' });
-        return;
-      }
-
-      const updatedRoom = { ...room, votes: room.getPublicVotes() };
-      io.to(roomId).emit('room-update', updatedRoom);
-    });
-
-    socket.on('reveal-votes', ({ roomId }) => {
-      const result = roomService.revealVotes(roomId);
-      if (!result) {
-        socket.emit('error', { message: 'Room not found' });
-        return;
-      }
-
-      io.to(roomId).emit('room-update', result.room);
-      io.to(roomId).emit('votes-revealed', result.votes);
-    });
-
-    socket.on('reset-voting', ({ roomId, nextStory }) => {
-      const room = roomService.resetVoting(roomId, nextStory);
+  socket.on('submit-vote', async ({ roomId, userId, vote }) => {
+    try {
+      const room = await roomService.submitVote(roomId, userId, vote);
       if (!room) {
         socket.emit('error', { message: 'Room not found' });
         return;
       }
 
       io.to(roomId).emit('room-update', room);
-    });
+    } catch (error) {
+      console.error('Error submitting vote:', error);
+      socket.emit('error', { message: 'Error submitting vote' });
+    }
+  });
 
-    socket.on('leave-room', ({ roomId, userId }) => {
-      const room = roomService.removeParticipant(roomId, userId);
+  socket.on('reveal-votes', async ({ roomId }) => {
+    try {
+      const votes = await roomService.revealVotes(roomId);
+      if (!votes) {
+        socket.emit('error', { message: 'Room not found' });
+        return;
+      }
+
+      const room = await roomService.getRoom(roomId);
+      io.to(roomId).emit('room-update', room);
+      io.to(roomId).emit('votes-revealed', votes);
+    } catch (error) {
+      console.error('Error revealing votes:', error);
+      socket.emit('error', { message: 'Error revealing votes' });
+    }
+  });
+
+  socket.on('reset-voting', async ({ roomId, nextStory }) => {
+    try {
+      const room = await roomService.resetVoting(roomId, nextStory);
+      if (!room) {
+        socket.emit('error', { message: 'Room not found' });
+        return;
+      }
+
+      io.to(roomId).emit('room-update', room);
+    } catch (error) {
+      console.error('Error resetting voting:', error);
+      socket.emit('error', { message: 'Error resetting voting' });
+    }
+  });
+
+  socket.on('leave-room', async ({ roomId, userId }) => {
+    try {
+      const room = await roomService.removeParticipant(roomId, userId);
+      socket.leave(roomId);
       if (room) {
         io.to(roomId).emit('room-update', room);
       }
-      socket.leave(roomId);
-    });
+    } catch (error) {
+      console.error('Error leaving room:', error);
+      socket.emit('error', { message: 'Error leaving room' });
+    }
+  });
 
-    socket.on('disconnect', () => {
-      console.log('User disconnected:', socket.id);
-    });
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
   });
 }
 
-module.exports = setupSocketHandlers; 
+module.exports = {
+  handleConnection
+}; 

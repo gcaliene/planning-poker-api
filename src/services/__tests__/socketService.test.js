@@ -1,103 +1,159 @@
-const setupSocketHandlers = require('../socketService');
+const socketService = require('../socketService');
 const roomService = require('../roomService');
 
+// Mock the room service
+jest.mock('../roomService');
+
 describe('SocketService', () => {
-  let io;
-  let socket;
-  let mockRoomId;
-  const mockUser = { id: 'user1', name: 'Test User' };
+  let mockSocket;
+  let mockIo;
 
   beforeEach(() => {
-    // Clear rooms before each test
-    roomService.rooms.clear();
+    // Clear all mocks
+    jest.clearAllMocks();
     
-    // Create a test room
-    const { roomId } = roomService.createRoom('Test Room', 'creator1');
-    mockRoomId = roomId;
-
-    // Mock socket.io server
-    io = {
-      on: jest.fn(),
-      to: jest.fn().mockReturnThis(),
-      emit: jest.fn()
-    };
-
-    // Mock socket with proper event handling
-    const eventHandlers = {};
-    socket = {
-      id: 'socket1',
+    mockSocket = {
+      id: 'test-socket-id',
       join: jest.fn(),
       leave: jest.fn(),
       emit: jest.fn(),
-      on: jest.fn().mockImplementation((event, handler) => {
-        eventHandlers[event] = handler;
-      })
+      on: jest.fn()
     };
 
-    // Setup socket handlers
-    setupSocketHandlers(io);
+    mockIo = {
+      to: jest.fn().mockReturnThis(),
+      emit: jest.fn()
+    };
+  });
+
+  test('should handle join-room event', async () => {
+    const mockRoom = {
+      id: 'TEST123',
+      name: 'Test Room',
+      createdBy: 'test-user',
+      participants: [],
+      votes: new Map(),
+      revealed: false
+    };
+
+    roomService.addParticipant.mockResolvedValue(mockRoom);
+
+    const user = { id: 'user1', name: 'Test User' };
     
-    // Simulate connection
-    const connectionHandler = io.on.mock.calls[0][1];
-    connectionHandler(socket);
+    socketService.handleConnection(mockSocket, mockIo);
+    const joinRoomHandler = mockSocket.on.mock.calls.find(call => call[0] === 'join-room')[1];
+    await joinRoomHandler({ roomId: 'TEST123', user });
 
-    // Store event handlers for testing
-    socket.eventHandlers = eventHandlers;
+    expect(roomService.addParticipant).toHaveBeenCalledWith('TEST123', user);
+    expect(mockSocket.join).toHaveBeenCalledWith('TEST123');
+    expect(mockIo.to).toHaveBeenCalledWith('TEST123');
+    expect(mockIo.emit).toHaveBeenCalledWith('room-update', mockRoom);
   });
 
-  test('should handle join-room event', () => {
-    const handler = socket.eventHandlers['join-room'];
-    handler({ roomId: mockRoomId, user: mockUser });
+  test('should handle submit-vote event', async () => {
+    const mockRoom = {
+      id: 'TEST123',
+      name: 'Test Room',
+      createdBy: 'test-user',
+      participants: [],
+      votes: new Map(),
+      revealed: false
+    };
 
-    expect(socket.join).toHaveBeenCalledWith(mockRoomId);
-    expect(io.to).toHaveBeenCalledWith(mockRoomId);
-    expect(io.emit).toHaveBeenCalledWith('room-update', expect.any(Object));
+    roomService.submitVote.mockResolvedValue(mockRoom);
+
+    socketService.handleConnection(mockSocket, mockIo);
+    const submitVoteHandler = mockSocket.on.mock.calls.find(call => call[0] === 'submit-vote')[1];
+    await submitVoteHandler({ roomId: 'TEST123', userId: 'user1', vote: 5 });
+
+    expect(roomService.submitVote).toHaveBeenCalledWith('TEST123', 'user1', 5);
+    expect(mockIo.to).toHaveBeenCalledWith('TEST123');
+    expect(mockIo.emit).toHaveBeenCalledWith('room-update', expect.any(Object));
   });
 
-  test('should handle submit-vote event', () => {
-    const handler = socket.eventHandlers['submit-vote'];
-    handler({ roomId: mockRoomId, userId: mockUser.id, vote: 5 });
+  test('should handle reveal-votes event', async () => {
+    const mockVotes = {
+      user1: 5,
+      user2: 8
+    };
 
-    expect(io.to).toHaveBeenCalledWith(mockRoomId);
-    expect(io.emit).toHaveBeenCalledWith('room-update', expect.any(Object));
+    roomService.revealVotes.mockResolvedValue(mockVotes);
+    roomService.getRoom.mockResolvedValue({
+      id: 'TEST123',
+      name: 'Test Room',
+      createdBy: 'test-user',
+      participants: [],
+      votes: new Map(),
+      revealed: true
+    });
+
+    socketService.handleConnection(mockSocket, mockIo);
+    const revealVotesHandler = mockSocket.on.mock.calls.find(call => call[0] === 'reveal-votes')[1];
+    await revealVotesHandler({ roomId: 'TEST123' });
+
+    expect(roomService.revealVotes).toHaveBeenCalledWith('TEST123');
+    expect(mockIo.to).toHaveBeenCalledWith('TEST123');
+    expect(mockIo.emit).toHaveBeenCalledWith('room-update', expect.any(Object));
+    expect(mockIo.emit).toHaveBeenCalledWith('votes-revealed', mockVotes);
   });
 
-  test('should handle reveal-votes event', () => {
-    const handler = socket.eventHandlers['reveal-votes'];
-    handler({ roomId: mockRoomId });
+  test('should handle reset-voting event', async () => {
+    const mockRoom = {
+      id: 'TEST123',
+      name: 'Test Room',
+      createdBy: 'test-user',
+      participants: [],
+      votes: new Map(),
+      revealed: false,
+      currentStory: 'New Story'
+    };
 
-    expect(io.to).toHaveBeenCalledWith(mockRoomId);
-    expect(io.emit).toHaveBeenCalledWith('room-update', expect.any(Object));
-    expect(io.emit).toHaveBeenCalledWith('votes-revealed', expect.any(Object));
+    roomService.resetVoting.mockResolvedValue(mockRoom);
+
+    socketService.handleConnection(mockSocket, mockIo);
+    const resetVotingHandler = mockSocket.on.mock.calls.find(call => call[0] === 'reset-voting')[1];
+    await resetVotingHandler({ roomId: 'TEST123', nextStory: 'New Story' });
+
+    expect(roomService.resetVoting).toHaveBeenCalledWith('TEST123', 'New Story');
+    expect(mockIo.to).toHaveBeenCalledWith('TEST123');
+    expect(mockIo.emit).toHaveBeenCalledWith('room-update', mockRoom);
   });
 
-  test('should handle reset-voting event', () => {
-    const handler = socket.eventHandlers['reset-voting'];
-    handler({ roomId: mockRoomId, nextStory: 'New Story' });
+  test('should handle leave-room event', async () => {
+    const mockRoom = {
+      id: 'TEST123',
+      name: 'Test Room',
+      createdBy: 'test-user',
+      participants: [],
+      votes: new Map(),
+      revealed: false
+    };
 
-    expect(io.to).toHaveBeenCalledWith(mockRoomId);
-    expect(io.emit).toHaveBeenCalledWith('room-update', expect.any(Object));
-  });
+    roomService.removeParticipant.mockResolvedValue(mockRoom);
 
-  test('should handle leave-room event', () => {
-    const handler = socket.eventHandlers['leave-room'];
-    handler({ roomId: mockRoomId, userId: mockUser.id });
+    socketService.handleConnection(mockSocket, mockIo);
+    const leaveRoomHandler = mockSocket.on.mock.calls.find(call => call[0] === 'leave-room')[1];
+    await leaveRoomHandler({ roomId: 'TEST123', userId: 'user1' });
 
-    expect(socket.leave).toHaveBeenCalledWith(mockRoomId);
+    expect(roomService.removeParticipant).toHaveBeenCalledWith('TEST123', 'user1');
+    expect(mockSocket.leave).toHaveBeenCalledWith('TEST123');
+    expect(mockIo.to).toHaveBeenCalledWith('TEST123');
+    expect(mockIo.emit).toHaveBeenCalledWith('room-update', mockRoom);
   });
 
   test('should handle disconnect event', () => {
-    const handler = socket.eventHandlers['disconnect'];
-    handler();
-
-    // No specific expectations, just verifying the handler exists
-    expect(handler).toBeDefined();
+    socketService.handleConnection(mockSocket, mockIo);
+    const disconnectHandler = mockSocket.on.mock.calls.find(call => call[0] === 'disconnect')[1];
+    disconnectHandler();
   });
 
-  test('should emit error for non-existent room', () => {
-    const handler = socket.eventHandlers['join-room'];
-    handler({ roomId: 'NONEXISTENT', user: mockUser });
+  test('should emit error for non-existent room', async () => {
+    roomService.addParticipant.mockResolvedValue(null);
 
-    expect(socket.emit).toHaveBeenCalledWith('error', { message: 'Room not found' });
+    socketService.handleConnection(mockSocket, mockIo);
+    const joinRoomHandler = mockSocket.on.mock.calls.find(call => call[0] === 'join-room')[1];
+    await joinRoomHandler({ roomId: 'NONEXISTENT', user: { id: 'user1', name: 'Test User' } });
+
+    expect(mockSocket.emit).toHaveBeenCalledWith('error', { message: 'Room not found' });
   });
 }); 

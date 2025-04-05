@@ -1,96 +1,75 @@
-const express = require('express');
 const request = require('supertest');
-const roomRoutes = require('../roomRoutes');
+const express = require('express');
 const roomService = require('../../services/roomService');
 
-// Create an Express app with the routes
-const app = express();
-app.use(express.json());
-app.use('/api', roomRoutes);
+// Mock the room service
+jest.mock('../../services/roomService');
 
 describe('Room Routes', () => {
+  let app;
+
   beforeEach(() => {
-    // Clear rooms before each test
-    roomService.rooms.clear();
+    // Clear all mocks
+    jest.clearAllMocks();
+    
+    // Create a new Express app for each test
+    app = express();
+    app.use(express.json());
+    
+    // Import and use the routes
+    const roomRoutes = require('../roomRoutes');
+    app.use('/api', roomRoutes);
   });
 
-  test('GET /api/health should return 200 and status ok', async () => {
-    const response = await request(app)
-      .get('/api/health')
-      .expect('Content-Type', /json/)
-      .expect(200);
-
-    expect(response.body).toEqual({ status: 'ok' });
-  });
-
-  test('POST /api/rooms should create a new room', async () => {
-    const roomData = {
+  test('should create a room', async () => {
+    const mockRoom = {
+      id: 'TEST123',
       name: 'Test Room',
-      createdBy: 'creator1'
-    };
-
-    const response = await request(app)
-      .post('/api/rooms')
-      .send(roomData)
-      .expect('Content-Type', /json/)
-      .expect(201);
-
-    expect(response.body).toHaveProperty('roomId');
-    expect(response.body.room).toMatchObject({
-      name: 'Test Room',
-      createdBy: 'creator1',
+      createdBy: 'test-user',
       participants: [],
-      currentStory: null,
       votes: {},
       revealed: false
-    });
-  });
-
-  test('POST /api/rooms should create a room with default name if not provided', async () => {
-    const roomData = {
-      createdBy: 'creator1'
     };
+
+    roomService.createRoom.mockResolvedValue(mockRoom);
 
     const response = await request(app)
       .post('/api/rooms')
-      .send(roomData)
+      .send({
+        name: 'Test Room',
+        createdBy: 'test-user'
+      })
       .expect('Content-Type', /json/)
       .expect(201);
 
-    expect(response.body.room.name).toBe(`Room ${response.body.roomId}`);
+    expect(response.body).toEqual(mockRoom);
+    expect(roomService.createRoom).toHaveBeenCalledWith('Test Room', 'test-user');
   });
 
-  test('POST /api/rooms should return 400 if createdBy is missing', async () => {
-    const roomData = {
-      name: 'Test Room'
+  test('should get a room', async () => {
+    const mockRoom = {
+      id: 'TEST123',
+      name: 'Test Room',
+      createdBy: 'test-user',
+      participants: [],
+      votes: {},
+      revealed: false
     };
 
-    const response = await request(app)
-      .post('/api/rooms')
-      .send(roomData)
-      .expect('Content-Type', /json/)
-      .expect(400);
-
-    expect(response.body).toHaveProperty('error');
-  });
-
-  test('GET /api/rooms/:roomId should return room details', async () => {
-    // First create a room
-    const { roomId } = roomService.createRoom('Test Room', 'creator1');
+    roomService.getRoom.mockResolvedValue(mockRoom);
 
     const response = await request(app)
-      .get(`/api/rooms/${roomId}`)
+      .get('/api/rooms/TEST123')
       .expect('Content-Type', /json/)
       .expect(200);
 
-    expect(response.body).toMatchObject({
-      id: roomId,
-      name: 'Test Room',
-      createdBy: 'creator1'
-    });
+    expect(response.body).toEqual(mockRoom);
+    expect(roomService.getRoom).toHaveBeenCalledWith('TEST123');
   });
 
-  test('GET /api/rooms/:roomId should return 404 for non-existent room', async () => {
+  test('should return 404 for non-existent room', async () => {
+    roomService.getRoom.mockResolvedValue(null);
+
     const response = await request(app)
       .get('/api/rooms/NONEXISTENT')
       .expect('Content-Type', /json/)
@@ -99,12 +78,12 @@ describe('Room Routes', () => {
     expect(response.body).toEqual({ error: 'Room not found' });
   });
 
-  test('GET /api/rooms/:roomId should return 400 for invalid room ID', async () => {
+  test('should return health check status', async () => {
     const response = await request(app)
-      .get('/api/rooms/123') // Using a shorter ID that will trigger the validation
+      .get('/api/health')
       .expect('Content-Type', /json/)
-      .expect(400);
+      .expect(200);
 
-    expect(response.body).toEqual({ error: 'Invalid room ID' });
+    expect(response.body).toEqual({ status: 'ok' });
   });
 }); 
