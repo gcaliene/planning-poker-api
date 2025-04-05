@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const roomService = require('../roomService');
+const Room = require('../../models/RoomSchema');
 
 // Mock mongoose and Room model
 jest.mock('mongoose', () => {
@@ -16,7 +17,6 @@ jest.mock('mongoose', () => {
         participants: data.participants || [],
         votes: data.votes || new Map(),
         revealed: data.revealed || false,
-        _id: 'mock-id',
         save: jest.fn().mockResolvedValue(this),
         addParticipant: jest.fn().mockImplementation(function(user) {
           if (!this.participants.some(p => p.id === user.id)) {
@@ -41,136 +41,113 @@ jest.mock('mongoose', () => {
           this.votes.clear();
           this.revealed = false;
           this.currentStory = nextStory;
+        }),
+        getPublicVotes: jest.fn().mockImplementation(function() {
+          if (this.revealed) {
+            return Object.fromEntries(this.votes);
+          }
+          return Object.fromEntries(
+            Array.from(this.votes.keys()).map(userId => [userId, '✓'])
+          );
         })
       };
     })
   };
 });
 
-// Mock the Room model's static methods
-mongoose.model('Room').findOne = jest.fn();
-mongoose.model('Room').deleteOne = jest.fn();
+// Mock Room model's static methods
+Room.findOne = jest.fn();
 
 describe('Room Service', () => {
+  let mockRoom;
+
   beforeEach(() => {
     jest.clearAllMocks();
-  });
-
-  test('should get a room by ID', async () => {
-    const mockRoom = {
+    mockRoom = {
       id: 'TEST123',
       name: 'Test Room',
       createdBy: 'test-user',
       participants: [],
       votes: new Map(),
-      revealed: false
+      revealed: false,
+      save: jest.fn().mockResolvedValue(this),
+      addParticipant: jest.fn().mockReturnValue(true),
+      removeParticipant: jest.fn().mockReturnValue(false),
+      submitVote: jest.fn(),
+      revealVotes: jest.fn().mockReturnValue({}),
+      resetVoting: jest.fn(),
+      getPublicVotes: jest.fn().mockReturnValue({})
     };
 
-    mongoose.model('Room').findOne.mockResolvedValue(mockRoom);
+    Room.findOne.mockResolvedValue(mockRoom);
+  });
+
+  test('should get a room by id', async () => {
     const room = await roomService.getRoom('TEST123');
+    expect(Room.findOne).toHaveBeenCalledWith({ id: 'TEST123' });
     expect(room).toEqual(mockRoom);
   });
 
-  test('should return null for non-existent room', async () => {
-    mongoose.model('Room').findOne.mockResolvedValue(null);
+  test('should handle non-existent room', async () => {
+    Room.findOne.mockResolvedValueOnce(null);
     const room = await roomService.getRoom('NONEXISTENT');
     expect(room).toBeNull();
   });
 
   test('should add a participant to a room', async () => {
-    const mockRoom = {
-      id: 'TEST123',
-      name: 'Test Room',
-      createdBy: 'test-user',
-      participants: [],
-      votes: new Map(),
-      revealed: false,
-      addParticipant: jest.fn().mockReturnValue(true),
-      save: jest.fn().mockResolvedValue(this)
-    };
-
-    mongoose.model('Room').findOne.mockResolvedValue(mockRoom);
     const user = { id: 'user1', name: 'Test User' };
-    const room = await roomService.addParticipant('TEST123', user);
-    expect(room).toBeDefined();
+    const result = await roomService.addParticipant('TEST123', user);
     expect(mockRoom.addParticipant).toHaveBeenCalledWith(user);
+    expect(mockRoom.save).toHaveBeenCalled();
+    expect(result).toBe(mockRoom);
   });
 
-  test('should not add duplicate participants', async () => {
-    const mockRoom = {
-      id: 'TEST123',
-      name: 'Test Room',
-      createdBy: 'test-user',
-      participants: [],
-      votes: new Map(),
-      revealed: false,
-      addParticipant: jest.fn().mockReturnValue(false),
-      save: jest.fn().mockResolvedValue(this)
-    };
-
-    mongoose.model('Room').findOne.mockResolvedValue(mockRoom);
+  test('should handle duplicate participant', async () => {
+    mockRoom.addParticipant.mockReturnValueOnce(false);
     const user = { id: 'user1', name: 'Test User' };
-    const room = await roomService.addParticipant('TEST123', user);
-    expect(room).toBeDefined();
-    expect(mockRoom.addParticipant).toHaveBeenCalledWith(user);
+    const result = await roomService.addParticipant('TEST123', user);
+    expect(result).toBe(mockRoom);
+  });
+
+  test('should handle error when adding participant', async () => {
+    mockRoom.save.mockRejectedValueOnce(new Error('Save failed'));
+    const user = { id: 'user1', name: 'Test User' };
+    await expect(roomService.addParticipant('TEST123', user)).rejects.toThrow('Save failed');
   });
 
   test('should submit a vote', async () => {
-    const mockRoom = {
-      id: 'TEST123',
-      name: 'Test Room',
-      createdBy: 'test-user',
-      participants: [],
-      votes: new Map(),
-      revealed: false,
-      submitVote: jest.fn(),
-      save: jest.fn().mockResolvedValue(this)
-    };
-
-    mongoose.model('Room').findOne.mockResolvedValue(mockRoom);
-    const room = await roomService.submitVote('TEST123', 'user1', 5);
-    expect(room).toBeDefined();
+    await roomService.submitVote('TEST123', 'user1', 5);
     expect(mockRoom.submitVote).toHaveBeenCalledWith('user1', 5);
+    expect(mockRoom.save).toHaveBeenCalled();
+  });
+
+  test('should handle error when submitting vote', async () => {
+    mockRoom.save.mockRejectedValueOnce(new Error('Save failed'));
+    await expect(roomService.submitVote('TEST123', 'user1', 5)).rejects.toThrow('Save failed');
   });
 
   test('should reveal votes', async () => {
-    const mockVotes = {
-      user1: 5,
-      user2: 8
-    };
-
-    const mockRoom = {
-      id: 'TEST123',
-      name: 'Test Room',
-      createdBy: 'test-user',
-      participants: [],
-      votes: new Map(),
-      revealed: false,
-      revealVotes: jest.fn().mockReturnValue(mockVotes),
-      save: jest.fn().mockResolvedValue(this)
-    };
-
-    mongoose.model('Room').findOne.mockResolvedValue(mockRoom);
-    const votes = await roomService.revealVotes('TEST123');
-    expect(votes).toEqual(mockVotes);
+    const votes = { user1: 5, user2: 8 };
+    mockRoom.revealVotes.mockReturnValueOnce(votes);
+    const result = await roomService.revealVotes('TEST123');
     expect(mockRoom.revealVotes).toHaveBeenCalled();
+    expect(mockRoom.save).toHaveBeenCalled();
+    expect(result).toEqual(votes);
+  });
+
+  test('should handle error when revealing votes', async () => {
+    mockRoom.save.mockRejectedValueOnce(new Error('Save failed'));
+    await expect(roomService.revealVotes('TEST123')).rejects.toThrow('Save failed');
   });
 
   test('should reset voting', async () => {
-    const mockRoom = {
-      id: 'TEST123',
-      name: 'Test Room',
-      createdBy: 'test-user',
-      participants: [],
-      votes: new Map(),
-      revealed: false,
-      resetVoting: jest.fn(),
-      save: jest.fn().mockResolvedValue(this)
-    };
-
-    mongoose.model('Room').findOne.mockResolvedValue(mockRoom);
-    const room = await roomService.resetVoting('TEST123', 'New Story');
-    expect(room).toBeDefined();
+    await roomService.resetVoting('TEST123', 'New Story');
     expect(mockRoom.resetVoting).toHaveBeenCalledWith('New Story');
+    expect(mockRoom.save).toHaveBeenCalled();
+  });
+
+  test('should handle error when resetting voting', async () => {
+    mockRoom.save.mockRejectedValueOnce(new Error('Save failed'));
+    await expect(roomService.resetVoting('TEST123', 'New Story')).rejects.toThrow('Save failed');
   });
 }); 
