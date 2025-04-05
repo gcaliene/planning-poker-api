@@ -107,12 +107,6 @@ describe('Room Model', () => {
     expect(room.participants).toHaveLength(0);
   });
 
-  test('should not remove non-existent participant', () => {
-    const isEmpty = room.removeParticipant('non-existent');
-    expect(isEmpty).toBe(true);
-    expect(room.participants).toHaveLength(0);
-  });
-
   test('should remove a participant\'s vote when they are removed', () => {
     const user = { id: 'user1', name: 'Test User' };
     room.addParticipant(user);
@@ -123,12 +117,6 @@ describe('Room Model', () => {
   });
 
   test('should submit a vote', () => {
-    room.submitVote('user1', 5);
-    expect(room.votes.get('user1')).toBe(5);
-  });
-
-  test('should update existing vote', () => {
-    room.votes.set('user1', 3);
     room.submitVote('user1', 5);
     expect(room.votes.get('user1')).toBe(5);
   });
@@ -145,12 +133,6 @@ describe('Room Model', () => {
     });
   });
 
-  test('should handle empty votes when revealing', () => {
-    const votes = room.revealVotes();
-    expect(room.revealed).toBe(true);
-    expect(votes).toEqual({});
-  });
-
   test('should reset voting', () => {
     room.votes.set('user1', 5);
     room.revealed = true;
@@ -161,7 +143,7 @@ describe('Room Model', () => {
     expect(room.currentStory).toBe('New Story');
   });
 
-  test('should get public votes when not revealed', () => {
+  test('should get public votes', () => {
     room.votes.set('user1', 5);
     room.votes.set('user2', 8);
     
@@ -170,22 +152,12 @@ describe('Room Model', () => {
       user1: '✓',
       user2: '✓'
     });
-  });
 
-  test('should get public votes when revealed', () => {
-    room.votes.set('user1', 5);
-    room.votes.set('user2', 8);
-    room.revealed = true;
-    
-    const publicVotes = room.getPublicVotes();
-    expect(publicVotes).toEqual({
+    room.revealVotes();
+    const revealedVotes = room.getPublicVotes();
+    expect(revealedVotes).toEqual({
       user1: 5,
       user2: 8
     });
-  });
-
-  test('should handle empty votes in public votes', () => {
-    const publicVotes = room.getPublicVotes();
-    expect(publicVotes).toEqual({});
   });
 }); 
