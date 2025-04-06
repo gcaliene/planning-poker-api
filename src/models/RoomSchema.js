@@ -86,7 +86,14 @@ roomSchema.methods.updateStoryStatus = function(storyId, status) {
   if (story) {
     story.status = status;
     if (status === 'completed') {
-      story.points = this.getPublicVotes();
+      // Calculate average points from all votes
+      const votes = Array.from(this.votes.values());
+      if (votes.length > 0) {
+        const sum = votes.reduce((acc, vote) => acc + vote, 0);
+        story.points = Math.round(sum / votes.length);
+      } else {
+        story.points = null;
+      }
     }
     return story;
   }
