@@ -63,7 +63,7 @@ roomSchema.methods.getPublicVotes = function() {
     return Object.fromEntries(this.votes);
   }
   return Array.from(this.votes.keys()).reduce((acc, id) => {
-    acc[id] = this.votes.get(id) ? '✓' : null;
+    acc[id] = this.votes.has(id) ? '✓' : null;
     return acc;
   }, {});
 };
