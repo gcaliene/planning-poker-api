@@ -9,15 +9,23 @@ const { handleConnection } = require('./services/socketService');
 
 const app = express();
 const server = http.createServer(app);
+
+// Configure CORS for Express
+app.use(cors({
+  origin: 'http://localhost:3001',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type']
+}));
+
+// Configure Socket.IO with CORS
 const io = socketIo(server, {
   cors: {
-    origin: '*',
+    origin: 'http://localhost:3001',
     methods: ['GET', 'POST']
   }
 });
 
 // Middleware
-app.use(cors());
 app.use(express.json());
 
 // Routes
