@@ -98,6 +98,82 @@ function handleConnection(socket, io) {
   socket.on('disconnect', () => {
     console.log(`[SocketService] User disconnected: socketId=${socket.id}`);
   });
+
+  socket.on('add-story', async ({ roomId, title, userId }) => {
+    console.log(`[SocketService] Add story request: socketId=${socket.id}, roomId=${roomId}, title=${title}`);
+    try {
+      const story = await roomService.addStory(roomId, title, userId);
+      if (!story) {
+        console.log(`[SocketService] Failed to add story: Room not found or unauthorized: roomId=${roomId}`);
+        socket.emit('error', { message: 'Failed to add story' });
+        return;
+      }
+
+      const room = await roomService.getRoom(roomId);
+      console.log(`[SocketService] Story added successfully: roomId=${roomId}, storyId=${story.id}`);
+      io.to(roomId).emit('room-update', room);
+    } catch (error) {
+      console.error(`[SocketService] Error adding story: socketId=${socket.id}, roomId=${roomId}, error=${error.message}`);
+      socket.emit('error', { message: 'Error adding story' });
+    }
+  });
+
+  socket.on('start-voting', async ({ roomId, storyId, userId }) => {
+    console.log(`[SocketService] Start voting request: socketId=${socket.id}, roomId=${roomId}, storyId=${storyId}`);
+    try {
+      const story = await roomService.startVoting(roomId, storyId, userId);
+      if (!story) {
+        console.log(`[SocketService] Failed to start voting: Room not found or unauthorized: roomId=${roomId}`);
+        socket.emit('error', { message: 'Failed to start voting' });
+        return;
+      }
+
+      const room = await roomService.getRoom(roomId);
+      console.log(`[SocketService] Voting started successfully: roomId=${roomId}, storyId=${storyId}`);
+      io.to(roomId).emit('room-update', room);
+    } catch (error) {
+      console.error(`[SocketService] Error starting voting: socketId=${socket.id}, roomId=${roomId}, error=${error.message}`);
+      socket.emit('error', { message: 'Error starting voting' });
+    }
+  });
+
+  socket.on('complete-story', async ({ roomId, storyId, userId }) => {
+    console.log(`[SocketService] Complete story request: socketId=${socket.id}, roomId=${roomId}, storyId=${storyId}`);
+    try {
+      const story = await roomService.completeStory(roomId, storyId, userId);
+      if (!story) {
+        console.log(`[SocketService] Failed to complete story: Room not found or unauthorized: roomId=${roomId}`);
+        socket.emit('error', { message: 'Failed to complete story' });
+        return;
+      }
+
+      const room = await roomService.getRoom(roomId);
+      console.log(`[SocketService] Story completed successfully: roomId=${roomId}, storyId=${storyId}`);
+      io.to(roomId).emit('room-update', room);
+    } catch (error) {
+      console.error(`[SocketService] Error completing story: socketId=${socket.id}, roomId=${roomId}, error=${error.message}`);
+      socket.emit('error', { message: 'Error completing story' });
+    }
+  });
+
+  socket.on('skip-story', async ({ roomId, storyId, userId }) => {
+    console.log(`[SocketService] Skip story request: socketId=${socket.id}, roomId=${roomId}, storyId=${storyId}`);
+    try {
+      const story = await roomService.skipStory(roomId, storyId, userId);
+      if (!story) {
+        console.log(`[SocketService] Failed to skip story: Room not found or unauthorized: roomId=${roomId}`);
+        socket.emit('error', { message: 'Failed to skip story' });
+        return;
+      }
+
+      const room = await roomService.getRoom(roomId);
+      console.log(`[SocketService] Story skipped successfully: roomId=${roomId}, storyId=${storyId}`);
+      io.to(roomId).emit('room-update', room);
+    } catch (error) {
+      console.error(`[SocketService] Error skipping story: socketId=${socket.id}, roomId=${roomId}, error=${error.message}`);
+      socket.emit('error', { message: 'Error skipping story' });
+    }
+  });
 }
 
 module.exports = {

@@ -113,6 +113,101 @@ class RoomService {
     
     return room.getPublicVotes();
   }
+
+  async addStory(roomId, title, userId) {
+    console.log(`[RoomService] Adding story: roomId=${roomId}, title=${title}, userId=${userId}`);
+    const room = await this.getRoom(roomId);
+    if (!room) {
+      console.log(`[RoomService] Failed to add story: Room not found: id=${roomId}`);
+      return null;
+    }
+
+    // Only room creator can add stories
+    if (room.createdBy !== userId) {
+      console.log(`[RoomService] Failed to add story: User not authorized: userId=${userId}`);
+      return null;
+    }
+
+    const story = room.addStory(title);
+    console.log(`[RoomService] Story added successfully: roomId=${roomId}, storyId=${story.id}`);
+    await room.save();
+    return story;
+  }
+
+  async startVoting(roomId, storyId, userId) {
+    console.log(`[RoomService] Starting voting: roomId=${roomId}, storyId=${storyId}, userId=${userId}`);
+    const room = await this.getRoom(roomId);
+    if (!room) {
+      console.error(`[RoomService] Failed to start voting: Room not found: id=${roomId}`);
+      return null;
+    }
+
+    // Only room creator can start voting
+    if (room.createdBy !== userId) {
+      console.warn(`[RoomService] Failed to start voting: User not authorized: userId=${userId}`);
+      return null;
+    }
+
+    const story = room.startVoting(storyId);
+    if (!story) {
+      console.error(`[RoomService] Failed to start voting: Story not found: storyId=${storyId}`);
+      return null;
+    }
+
+    console.log(`[RoomService] Voting started successfully: roomId=${roomId}, storyId=${storyId}`);
+    await room.save();
+    return story;
+  }
+
+  async completeStory(roomId, storyId, userId) {
+    console.log(`[RoomService] Completing story: roomId=${roomId}, storyId=${storyId}, userId=${userId}`);
+    const room = await this.getRoom(roomId);
+    if (!room) {
+      console.error(`[RoomService] Failed to complete story: Room not found: id=${roomId}`);
+      return null;
+    }
+
+    // Only room creator can complete stories
+    if (room.createdBy !== userId) {
+      console.warn(`[RoomService] Failed to complete story: User not authorized: userId=${userId}`);
+      return null;
+    }
+
+    const story = room.completeStory(storyId);
+    if (!story) {
+      console.error(`[RoomService] Failed to complete story: Story not found: storyId=${storyId}`);
+      return null;
+    }
+
+    console.log(`[RoomService] Story completed successfully: roomId=${roomId}, storyId=${storyId}`);
+    await room.save();
+    return story;
+  }
+
+  async skipStory(roomId, storyId, userId) {
+    console.log(`[RoomService] Skipping story: roomId=${roomId}, storyId=${storyId}, userId=${userId}`);
+    const room = await this.getRoom(roomId);
+    if (!room) {
+      console.log(`[RoomService] Failed to skip story: Room not found: id=${roomId}`);
+      return null;
+    }
+
+    // Only room creator can skip stories
+    if (room.createdBy !== userId) {
+      console.log(`[RoomService] Failed to skip story: User not authorized: userId=${userId}`);
+      return null;
+    }
+
+    const story = room.skipStory(storyId);
+    if (!story) {
+      console.log(`[RoomService] Failed to skip story: Story not found: storyId=${storyId}`);
+      return null;
+    }
+
+    console.log(`[RoomService] Story skipped successfully: roomId=${roomId}, storyId=${storyId}`);
+    await room.save();
+    return story;
+  }
 }
 
 module.exports = new RoomService(); 
