@@ -14,3 +14,13 @@ coverage/
 
 .env.development
 .env.test
+
+
+*.log.*
+*.gz
+*.lock
+*.pid
+*.sock
+*.port
+*.pid
+*.log

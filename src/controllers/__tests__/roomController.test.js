@@ -1,79 +1,89 @@
-const roomController = require('../roomController');
+const request = require('supertest');
+const express = require('express');
 const roomService = require('../../services/roomService');
 
-// Mock response object
-const mockResponse = () => {
-  const res = {};
-  res.status = jest.fn().mockReturnValue(res);
-  res.json = jest.fn().mockReturnValue(res);
-  return res;
-};
+// Mock the room service
+jest.mock('../../services/roomService');
 
 describe('RoomController', () => {
+  let app;
+
   beforeEach(() => {
-    // Clear rooms before each test
-    roomService.rooms.clear();
+    // Clear all mocks
+    jest.clearAllMocks();
+    
+    // Create a new Express app for each test
+    app = express();
+    app.use(express.json());
+    
+    // Import and use the routes
+    const roomRoutes = require('../../routes/roomRoutes');
+    app.use('/api', roomRoutes);
   });
 
-  test('should create a room', () => {
-    const req = {
-      body: {
-        name: 'Test Room',
-        createdBy: 'creator1'
-      }
-    };
-    const res = mockResponse();
-
-    roomController.createRoom(req, res);
-
-    expect(res.status).toHaveBeenCalledWith(201);
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-      roomId: expect.any(String),
-      room: expect.objectContaining({
-        name: 'Test Room',
-        createdBy: 'creator1'
-      })
-    }));
-  });
-
-  test('should get a room', () => {
-    // First create a room
-    const { roomId } = roomService.createRoom('Test Room', 'creator1');
-
-    const req = {
-      params: { roomId }
-    };
-    const res = mockResponse();
-
-    roomController.getRoom(req, res);
-
-    expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-      id: roomId,
+  test('should create a room', async () => {
+    const mockRoom = {
+      id: 'TEST123',
       name: 'Test Room',
-      createdBy: 'creator1'
-    }));
-  });
-
-  test('should return 404 for non-existent room', () => {
-    const req = {
-      params: { roomId: 'NONEXISTENT' }
+      createdBy: 'test-user',
+      participants: [],
+      votes: {},
+      revealed: false
     };
-    const res = mockResponse();
 
-    roomController.getRoom(req, res);
+    roomService.createRoom.mockResolvedValue(mockRoom);
 
-    expect(res.status).toHaveBeenCalledWith(404);
-    expect(res.json).toHaveBeenCalledWith({ error: 'Room not found' });
+    const response = await request(app)
+      .post('/api/rooms')
+      .send({
+        name: 'Test Room',
+        createdBy: 'test-user'
+      })
+      .expect('Content-Type', /json/)
+      .expect(201);
+
+    expect(response.body).toEqual(mockRoom);
+    expect(roomService.createRoom).toHaveBeenCalledWith('Test Room', 'test-user');
   });
 
-  test('should return health check status', () => {
-    const req = {};
-    const res = mockResponse();
+  test('should get a room', async () => {
+    const mockRoom = {
+      id: 'TEST123',
+      name: 'Test Room',
+      createdBy: 'test-user',
+      participants: [],
+      votes: {},
+      revealed: false
+    };
 
-    roomController.healthCheck(req, res);
+    roomService.getRoom.mockResolvedValue(mockRoom);
 
-    expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({ status: 'ok' });
+    const response = await request(app)
+      .get('/api/rooms/TEST123')
+      .expect('Content-Type', /json/)
+      .expect(200);
+
+    expect(response.body).toEqual(mockRoom);
+    expect(roomService.getRoom).toHaveBeenCalledWith('TEST123');
+  });
+
+  test('should return 404 for non-existent room', async () => {
+    roomService.getRoom.mockResolvedValue(null);
+
+    const response = await request(app)
+      .get('/api/rooms/NONEXISTENT')
+      .expect('Content-Type', /json/)
+      .expect(404);
+
+    expect(response.body).toEqual({ error: 'Room not found' });
+  });
+
+  test('should return health check status', async () => {
+    const response = await request(app)
+      .get('/api/health')
+      .expect('Content-Type', /json/)
+      .expect(200);
+
+    expect(response.body).toEqual({ status: 'ok' });
   });
 }); 

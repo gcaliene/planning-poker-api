@@ -1,61 +1,131 @@
 # Planning Poker API
 
-A real-time planning poker application API built with Express and Socket.io.
+A real-time planning poker API built with Node.js, Express, Socket.io, and MongoDB.
 
 ## Features
 
-- Create and join planning poker rooms
-- Real-time voting and vote revealing
-- Multiple participants support
-- Room management (join, leave, reset)
+- Create and manage planning poker rooms
+- Real-time voting with Socket.io
+- Persistent storage with MongoDB
+- RESTful API endpoints
+- Comprehensive test coverage
 
 ## Prerequisites
 
 - Node.js (v14 or higher)
+- MongoDB (v4.4 or higher)
 - npm or yarn
 
-## Setup
+## Installation
 
-1. Clone the repository
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/planning-poker-api.git
+cd planning-poker-api
+```
+
 2. Install dependencies:
-   ```bash
-   npm install
-   ```
+```bash
+npm install
+```
+
 3. Create a `.env` file in the root directory with the following variables:
-   ```
-   PORT=4000
-   FRONTEND_URL=http://localhost:3000
-   ```
+```env
+PORT=3000
+CORS_ORIGIN=http://localhost:3000
+MONGODB_URI=mongodb://localhost:27017/planning-poker
+```
 
-## Running the Server
+## Running the Application
 
-Development mode (with auto-reload):
+1. Start MongoDB:
+```bash
+mongod
+```
+
+2. Start the development server:
 ```bash
 npm run dev
 ```
 
-Production mode:
+3. Start the production server:
 ```bash
 npm start
 ```
 
-The server will start on port 4000 by default.
+## Testing
+
+Run the tests with coverage:
+```bash
+npm test
+```
+
+Run tests in watch mode:
+```bash
+npm run test:watch
+```
 
 ## API Endpoints
 
-- `GET /api/health` - Health check endpoint
-- `POST /api/rooms` - Create a new room
-- `GET /api/rooms/:roomId` - Get room details
+### Health Check
+- `GET /api/health`
+  - Returns: `{ status: 'ok' }`
+
+### Rooms
+- `POST /api/rooms`
+  - Request body: `{ name: string, createdBy: string }`
+  - Returns: Created room object
+
+- `GET /api/rooms/:roomId`
+  - Returns: Room details
 
 ## Socket Events
 
-- `join-room` - Join a planning poker room
-- `submit-vote` - Submit a vote for the current story
-- `reveal-votes` - Reveal all votes in the room
-- `reset-voting` - Reset voting for the next story
-- `leave-room` - Leave the current room
+### Client to Server
+- `join-room`: Join a planning poker room
+  - Data: `{ roomId: string, user: { id: string, name: string } }`
 
-## Environment Variables
+- `submit-vote`: Submit a vote
+  - Data: `{ roomId: string, userId: string, vote: number }`
 
-- `PORT` - Port number for the server (default: 4000)
-- `FRONTEND_URL` - URL of the frontend application (default: http://localhost:3000) 
+- `reveal-votes`: Reveal all votes
+  - Data: `{ roomId: string }`
+
+- `reset-voting`: Reset voting for the next story
+  - Data: `{ roomId: string, nextStory?: string }`
+
+- `leave-room`: Leave a room
+  - Data: `{ roomId: string, userId: string }`
+
+### Server to Client
+- `room-update`: Room state update
+  - Data: Updated room object
+
+- `votes-revealed`: Votes have been revealed
+  - Data: Object containing all votes
+
+- `error`: Error occurred
+  - Data: `{ message: string }`
+
+## Database Schema
+
+### Room
+```typescript
+{
+  id: string;
+  name: string;
+  createdBy: string;
+  participants: Array<{
+    id: string;
+    name: string;
+  }>;
+  currentStory: string | null;
+  votes: Map<string, number>;
+  revealed: boolean;
+  createdAt: Date;
+}
+```
+
+## License
+
+MIT 
