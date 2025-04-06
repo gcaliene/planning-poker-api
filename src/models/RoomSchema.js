@@ -80,6 +80,22 @@ roomSchema.methods.addStory = function(title) {
   return story;
 };
 
+// Delete a story from the room
+roomSchema.methods.deleteStory = function(storyId) {
+  const storyIndex = this.stories.findIndex(s => s.id === storyId);
+  if (storyIndex === -1) return null;
+  
+  const deletedStory = this.stories[storyIndex];
+  this.stories.splice(storyIndex, 1);
+  
+  // If the deleted story was the current story, clear currentStory
+  if (this.currentStory === storyId) {
+    this.currentStory = null;
+  }
+  
+  return deletedStory;
+};
+
 // Update story status
 roomSchema.methods.updateStoryStatus = function(storyId, status) {
   const story = this.stories.find(s => s.id === storyId);

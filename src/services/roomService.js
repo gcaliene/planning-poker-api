@@ -208,6 +208,31 @@ class RoomService {
     await room.save();
     return story;
   }
+
+  async deleteStory(roomId, storyId, userId) {
+    console.log(`[RoomService] Deleting story: roomId=${roomId}, storyId=${storyId}, userId=${userId}`);
+    const room = await this.getRoom(roomId);
+    if (!room) {
+      console.log(`[RoomService] Failed to delete story: Room not found: id=${roomId}`);
+      return null;
+    }
+
+    // Only room creator can delete stories
+    if (room.createdBy !== userId) {
+      console.log(`[RoomService] Failed to delete story: User not authorized: userId=${userId}`);
+      return null;
+    }
+
+    const deletedStory = room.deleteStory(storyId);
+    if (!deletedStory) {
+      console.log(`[RoomService] Failed to delete story: Story not found: storyId=${storyId}`);
+      return null;
+    }
+
+    console.log(`[RoomService] Story deleted successfully: roomId=${roomId}, storyId=${storyId}`);
+    await room.save();
+    return deletedStory;
+  }
 }
 
 module.exports = new RoomService(); 

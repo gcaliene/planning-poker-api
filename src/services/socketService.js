@@ -174,6 +174,25 @@ function handleConnection(socket, io) {
       socket.emit('error', { message: 'Error skipping story' });
     }
   });
+
+  socket.on('delete-story', async ({ roomId, storyId, userId }) => {
+    console.log(`[SocketService] Delete story request: socketId=${socket.id}, roomId=${roomId}, storyId=${storyId}`);
+    try {
+      const deletedStory = await roomService.deleteStory(roomId, storyId, userId);
+      if (!deletedStory) {
+        console.log(`[SocketService] Failed to delete story: Room not found or unauthorized: roomId=${roomId}`);
+        socket.emit('error', { message: 'Failed to delete story' });
+        return;
+      }
+
+      const room = await roomService.getRoom(roomId);
+      console.log(`[SocketService] Story deleted successfully: roomId=${roomId}, storyId=${storyId}`);
+      io.to(roomId).emit('room-update', room);
+    } catch (error) {
+      console.error(`[SocketService] Error deleting story: socketId=${socket.id}, roomId=${roomId}, error=${error.message}`);
+      socket.emit('error', { message: 'Error deleting story' });
+    }
+  });
 }
 
 module.exports = {
