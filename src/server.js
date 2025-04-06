@@ -10,18 +10,21 @@ const { handleConnection } = require('./services/socketService');
 const app = express();
 const server = http.createServer(app);
 
-// Configure CORS for Express
-app.use(cors({
-  origin: 'http://localhost:3001',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type']
-}));
+// CORS configuration
+const corsOptions = {
+  origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['http://localhost:3001'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true
+};
+
+app.use(cors(corsOptions));
 
 // Configure Socket.IO with CORS
 const io = socketIo(server, {
   cors: {
-    origin: 'http://localhost:3001',
-    methods: ['GET', 'POST']
+    origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['http://localhost:3001'],
+    methods: ['GET', 'POST'],
+    credentials: true
   }
 });
 
