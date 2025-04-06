@@ -13,8 +13,8 @@ const server = http.createServer(app);
 // CORS configuration
 const corsOptions = {
   origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['http://localhost:3001'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type']
 };
 
 app.use(cors(corsOptions));
@@ -23,8 +23,7 @@ app.use(cors(corsOptions));
 const io = socketIo(server, {
   cors: {
     origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['http://localhost:3001'],
-    methods: ['GET', 'POST'],
-    credentials: true
+    methods: ['GET', 'POST']
   }
 });
 
