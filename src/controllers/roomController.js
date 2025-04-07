@@ -27,7 +27,7 @@ const roomController = {
 
   async getRoom(req, res) {
     const { roomId } = req.params;
-    console.log(`[RoomController] Get room request: id=${roomId}`);
+    console.log(`1: [RoomController] Get room request: id=${roomId}`);
     
     if (!roomId || roomId.length < 6) {
       console.log(`[RoomController] Get room failed: Invalid room ID: ${roomId}`);
@@ -40,7 +40,7 @@ const roomController = {
         console.log(`[RoomController] Room not found: id=${roomId}`);
         return res.status(404).json({ error: 'Room not found' });
       }
-      console.log(`[RoomController] Room retrieved successfully: id=${roomId}`);
+      console.log(`3:[RoomController] Room retrieved successfully: id=${roomId}`);
       res.json(room);
     } catch (error) {
       console.error(`[RoomController] Failed to retrieve room: id=${roomId}, error=${error.message}`);

@@ -19,7 +19,7 @@ class RoomService {
   }
 
   async getRoom(roomId) {
-    console.log(`[RoomService] Fetching room: id=${roomId}`);
+    console.log(`2: [RoomService] Fetching room: id=${roomId}`);
     const room = await Room.findOne({ id: roomId });
     if (!room) {
       console.log(`[RoomService] Room not found: id=${roomId}`);
