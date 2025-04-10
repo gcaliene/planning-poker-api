@@ -1,4 +1,5 @@
 const Room = require('../models/RoomSchema');
+const Logger = require('../utils/logger');
 
 class CleanupService {
   constructor() {
@@ -6,13 +7,13 @@ class CleanupService {
   }
 
   start() {
-    console.log('[CleanupService] Starting cleanup service');
+    Logger.log('[CleanupService] Starting cleanup service');
     this.runCleanup();
     setInterval(() => this.runCleanup(), this.cleanupInterval);
   }
 
   async runCleanup() {
-    console.log('[CleanupService] Running cleanup');
+    Logger.log('[CleanupService] Running cleanup');
     try {
       const now = new Date();
       const twelveHoursAgo = new Date(now.getTime() - 12 * 60 * 60 * 1000);
@@ -34,17 +35,17 @@ class CleanupService {
         ]
       });
 
-      console.log(`[CleanupService] Found ${rooms.length} rooms to cleanup`);
+      Logger.log(`[CleanupService] Found ${rooms.length} rooms to cleanup`);
 
       // Delete the rooms
       for (const room of rooms) {
-        console.log(`[CleanupService] Deleting room: id=${room.id}`);
+        Logger.log(`[CleanupService] Deleting room: id=${room.id}`);
         await Room.deleteOne({ _id: room._id });
       }
 
-      console.log('[CleanupService] Cleanup completed successfully');
+      Logger.log('[CleanupService] Cleanup completed successfully');
     } catch (error) {
-      console.error('[CleanupService] Error during cleanup:', error);
+      Logger.error(`[CleanupService] Error during cleanup: ${error}`);
     }
   }
 }
