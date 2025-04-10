@@ -21,7 +21,9 @@ const roomSchema = new mongoose.Schema({
   votes: { type: Map, of: Number, default: {} },
   revealed: { type: Boolean, default: false },
   stories: [storySchema],
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  lastActivity: { type: Date, default: Date.now },
+  lastStoryAdded: { type: Date, default: Date.now }
 });
 
 // Add methods to match our current Room class

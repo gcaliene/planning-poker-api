@@ -37,6 +37,7 @@ class RoomService {
 
     const added = room.addParticipant(user);
     if (added) {
+      room.lastActivity = new Date();
       console.log(`[RoomService] Participant added successfully: roomId=${roomId}, userId=${user.id}`);
       await room.save();
     } else {
@@ -60,6 +61,7 @@ class RoomService {
       return null;
     }
 
+    room.lastActivity = new Date();
     console.log(`[RoomService] Participant removed successfully: roomId=${roomId}, userId=${userId}`);
     await room.save();
     return room;
@@ -74,6 +76,7 @@ class RoomService {
     }
 
     room.submitVote(userId, vote);
+    room.lastActivity = new Date();
     console.log(`[RoomService] Vote submitted successfully: roomId=${roomId}, userId=${userId}`);
     await room.save();
     return room;
@@ -129,6 +132,8 @@ class RoomService {
     }
 
     const story = room.addStory(title);
+    room.lastActivity = new Date();
+    room.lastStoryAdded = new Date();
     console.log(`[RoomService] Story added successfully: roomId=${roomId}, storyId=${story.id}`);
     await room.save();
     return story;

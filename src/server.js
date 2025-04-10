@@ -6,6 +6,7 @@ const cors = require('cors');
 const database = require('./config/database');
 const roomRoutes = require('./routes/roomRoutes');
 const { handleConnection } = require('./services/socketService');
+const cleanupService = require('./services/cleanupService');
 
 const app = express();
 const server = http.createServer(app);
@@ -60,6 +61,9 @@ io.on('connection', (socket) => {
 // Connect to MongoDB
 database.connectDB()
   .then(() => {
+    // Start cleanup service
+    cleanupService.start();
+    
     // Start the server
     const PORT = process.env.PORT || 4000;
     server.listen(PORT, () => {
